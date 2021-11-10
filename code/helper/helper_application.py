@@ -3,7 +3,7 @@ from utils import hash_password, generate_rsa_keys, aes_encrypt, static_page, er
     decrypt_request_data, export_private_key
 from zkp_protocol import calc_result_bit, f, random_challenge
 from jinja2 import Environment, FileSystemLoader
-from biometric_systems.facial.facial_recognition import recognition
+from biometric_systems.facial import facial_recognition
 import cherrypy
 import requests
 import base64
@@ -914,7 +914,7 @@ class Application(object):
 
     @cherrypy.expose
     def biometric_authentication(self):
-        recognition()
+        facial_recognition.recognition()
 
 
 server_config = {
