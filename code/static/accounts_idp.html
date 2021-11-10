@@ -1,0 +1,330 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <title>Snippet - BBBootstrap</title>
+    <link href='https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css' rel='stylesheet'>
+    <link href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css' rel='stylesheet'>
+    <style>body {
+        color: #000;
+        overflow-x: hidden;
+        height: 100%;
+        background-color: #B0BEC5;
+        background-repeat: no-repeat
+    }
+
+    .card0 {
+        box-shadow: 0px 4px 8px 0px #757575;
+        border-radius: 0px
+    }
+
+    .card2 {
+        margin: 0px 40px
+    }
+
+    .logo {
+        width: 200px;
+        height: 100px;
+        margin-top: 20px;
+        margin-left: 35px
+    }
+
+    .image {
+        width: 360px;
+        height: 280px
+    }
+
+    .border-line {
+        border-right: 1px solid #EEEEEE
+    }
+
+    .line {
+        height: 1px;
+        width: 45%;
+        background-color: #E0E0E0;
+        margin-top: 10px
+    }
+
+    .or {
+        width: 10%;
+        font-weight: bold
+    }
+
+    .text-sm {
+        font-size: 14px !important
+    }
+
+    ::placeholder {
+        color: #BDBDBD;
+        opacity: 1;
+        font-weight: 300
+    }
+
+    :-ms-input-placeholder {
+        color: #BDBDBD;
+        font-weight: 300
+    }
+
+    ::-ms-input-placeholder {
+        color: #BDBDBD;
+        font-weight: 300
+    }
+
+    input,
+    textarea {
+        padding: 10px 12px 10px 12px;
+        border: 1px solid lightgrey;
+        border-radius: 2px;
+        margin-bottom: 5px;
+        margin-top: 2px;
+        width: 100%;
+        box-sizing: border-box;
+        color: #2C3E50;
+        font-size: 14px;
+        letter-spacing: 1px
+    }
+
+    input:focus,
+    textarea:focus {
+        -moz-box-shadow: none !important;
+        -webkit-box-shadow: none !important;
+        box-shadow: none !important;
+        border: 1px solid #304FFE;
+        outline-width: 0
+    }
+
+    button:focus {
+        -moz-box-shadow: none !important;
+        -webkit-box-shadow: none !important;
+        box-shadow: none !important;
+        outline-width: 0
+    }
+
+    a {
+        color: inherit;
+        cursor: pointer
+    }
+
+    .btn-blue {
+        background-color: #0e6251;
+        width: 150px;
+        color: #fff;
+        border-radius: 2px
+    }
+
+    .btn-blue:hover {
+        background-color: #000;
+        cursor: pointer
+    }
+
+    .bg-blue {
+        color: #fff;
+    !important;
+        background-color: #0e6251
+    }
+
+    @media screen and (max-width: 991px) {
+        .logo {
+            margin-left: 0px
+        }
+
+        .image {
+            width: 300px;
+            height: 220px
+        }
+
+        .border-line {
+            border-right: none
+        }
+
+        .card2 {
+            border-top: 1px solid #EEEEEE !important;
+            margin: 0px 15px
+        }
+    }</style>
+    <script type='text/javascript' src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+    <script type='text/javascript'
+            src='https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js'></script>
+    <script type='text/javascript'></script>
+    <link href="//netdna.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.css" rel="stylesheet">
+
+</head>
+<body oncontextmenu='return false' class='snippet-body'>
+
+<!--<div class="bg-blue py-4">
+
+
+    <div class="row px-3"><small class="ml-4 ml-sm-5 mb-2">Rafael Simões IAA</small>
+    </div>
+</div>-->
+
+<nav class="navbar sticky-top navbar-expand-lg navbar-light bg-blue">
+    <a class="navbar-brand px-3" href="#" style="color:#fff;!important;"><b>IAA</b></a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="/account" style="color:#fff;!important;">Account</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/logout" style="color:#fff;!important;">Logout</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container-fluid px-1 px-md-5 px-lg-1 px-xl-5 py-5 mx-auto">
+    <div class="card card0 border-0">
+        <div class="row d-flex">
+            <div class="col-lg-12">
+                <div class="card2 card border-0 px-4 py-5">
+                    <div class="row mb-4 px-3">
+                        <h1 class="mb-0 mr-4 mt-2 "><b>Account</b></h1>
+                    </div>
+                    <div class="row px-3 mb-4">
+                        <div class="line"></div>
+                        <div class="line"></div>
+                    </div>
+
+                    <div id="accounts"></div>
+                    <div class="row px-3">
+                        <label class="mb-1">
+                            <h6 class="mb-0 text-sm">Username</h6>
+                        </label>
+                        <input id="username_{{id}}" class="mb-4" type="text" name="username"
+                               placeholder="Enter a valid username"
+                               value="{{username}}" required>
+                    </div>
+                    <div class="row px-3">
+                        <label class="mb-1">
+                            <h6 class="mb-0 text-sm">Email Address</h6>
+                        </label>
+                        <input id="email_{{id}}" class="mb-4" type="email" name="email"
+                               placeholder="Enter a valid email address"
+                               value="{{email}}" required>
+                    </div>
+                    <div class="row px-3">
+                        <label class="mb-1">
+                            <h6 class="mb-0 text-sm">Current password</h6>
+                        </label>
+                        <div class="input-group">
+                            <input id="password_{{id}}" type="password" class="form-control pwd" name="password"
+                                   placeholder="Enter current password" required>
+
+                            <div class="input-group-append" onclick="see_password('password_{{id}}')">
+                             <span class="input-group-text">
+                             <i class="fa fa-eye"></i>
+                             </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row px-3" style="margin-top: 20px">
+                        <label class="mb-1">
+                            <h6 class="mb-0 text-sm">New password</h6>
+                        </label>
+                        <div class="input-group">
+                            <input id="new_password_{{id}}" type="password" class="form-control pwd" name="new_password"
+                                   placeholder="Enter new password" required>
+
+                            <div class="input-group-append" onclick="see_password('new_password_{{id}}')">
+                             <span class="input-group-text">
+                             <i class="fa fa-eye"></i>
+                             </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row px-3" style="margin-top: 20px">
+
+                          <span class="input-group-btn">
+                            <button class="btn btn-dark reveal" type="button" onclick="update_account('{{id}}')">Update credentials</button>
+                          </span>
+
+                        &nbsp;&nbsp;
+                        <span class="input-group-btn">
+                            <button class="btn btn-danger reveal" type="button" onclick="delete_account('{{id}}')">Delete account</button>
+                          </span>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+        </div>
+        <div class="bg-blue py-4">
+            <div class="row px-3"><small class="ml-4 ml-sm-5 mb-2">Rafael Simões IAA</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+
+    function see_password(password_input) {
+        let password_input_jquery = $(`#${password_input}`);
+        let current_type = password_input_jquery.attr('type');
+        if (current_type === 'password') {
+            password_input_jquery.attr('type', 'text');
+        } else {
+            password_input_jquery.attr('type', 'password');
+        }
+
+    }
+
+    function delete_account(account_id) {
+        $.ajax({
+            type: "DELETE",
+            url: `/delete_account?account_id=${account_id}`,
+            contentType: "application/json",
+            dataType: 'json',
+            success: (e) => {
+                let status = e['status'];
+                if (status === 'OK') {
+                    window.location.href = '/logout';
+                } else {
+                    alert("Error deleting this account");
+                }
+            }
+        });
+    }
+
+
+    function update_account(account_id) {
+        let username = $(`#username_${account_id}`).val();
+        let email = $(`#email_${account_id}`).val();
+        let password = $(`#password_${account_id}`).val();
+        let new_password = $(`#new_password_${account_id}`).val();
+
+        if (password === "") {
+            alert("You need to insert current password in order to update these credentials!");
+            return;
+        }
+        $.ajax({
+            type: "POST",
+            url: `/update_account?user_id=${account_id}&username=${username}&email=${email}&password=${password}&new_password=${new_password}`,
+            contentType: "application/json",
+            dataType: 'json',
+            success: (e) => {
+                let status = e['status'];
+
+                if (status === "NOTHING")
+                    alert("Nothing to update");
+                else if (status === "OK") {
+                    alert("Account updated");
+                    location.reload();
+                } else
+                    alert(`${e.message}`);
+            }
+        });
+    }
+</script>
+
+
+</body>
+</html>

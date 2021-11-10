@@ -1,0 +1,15 @@
+{
+  "sp_info": {
+    "id": "http://localhost:8081",
+    "location": "http://localhost:8081/receive_identity_attributes"
+  },
+  "identity_attributes": [
+    "id",
+    "username",
+    "email"
+  ],
+  "idp_info": {
+    "id": "http://localhost:8082",
+    "location": "http://localhost:8082/handle_identity_request"
+  }
+}
