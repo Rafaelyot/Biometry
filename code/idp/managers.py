@@ -54,7 +54,7 @@ class ZKPManager:
     def invalidate_user(self, username):
         self.data.pop(username, None)
 
-    def protocol(self, username, challenge, r):
+    def protocol(self, username, challenge, r):  # DONE
         iteration = self.data[username]['iteration']
         is_legit = self.data[username]['is_legit']
         password = self.data[username]['password']

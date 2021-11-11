@@ -119,7 +119,7 @@ def decrypt_request_data(message, secret, tag):
     return data
 
 
-def create_inner_message(status, message=None, data=None, generate_garbage=True):
+def create_inner_message(status, message=None, data=None, generate_garbage=False):
     content = {
         'status': status,
         'message': message,
@@ -131,7 +131,11 @@ def create_inner_message(status, message=None, data=None, generate_garbage=True)
 
 
 def message_wrapper(message, secret, status='OK'):
-    ciphertext, tag = encrypt_request_data(message, secret)
+    if message is None or secret is None:
+        ciphertext, tag = None, None
+    else:
+        ciphertext, tag = encrypt_request_data(message, secret)
+
     return {
         'message': ciphertext,
         'tag': tag,

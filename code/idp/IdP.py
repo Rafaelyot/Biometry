@@ -27,7 +27,7 @@ class IdP:
         return open('static/' + path, 'r').read()
 
     @cherrypy.expose
-    def index(self):
+    def index(self):  # DONE
         user_id = cherrypy.session.get('user_id')
         if not user_id:
             raise cherrypy.HTTPRedirect('/login')
@@ -35,11 +35,11 @@ class IdP:
         raise cherrypy.HTTPRedirect('/account')
 
     @cherrypy.expose
-    def login(self):
+    def login(self):  # DONE
         return self.static_contents('login_idp.html')
 
     @cherrypy.expose
-    def authenticate(self, username_or_email, password):
+    def authenticate(self, username_or_email, password):  # DONE
         user = self.database_service.get_user_for_login(username_or_email, password)
         if not user:
             return error_page('Wrong credentials')
@@ -48,17 +48,17 @@ class IdP:
         raise cherrypy.HTTPRedirect('/account')
 
     @cherrypy.expose
-    def sign_up(self):
+    def sign_up(self):  # DONE
         return self.static_contents('sign_up_idp.html')
 
     @cherrypy.expose
-    def logout(self):
+    def logout(self):  # DONE
         # Clear session
         cherrypy.session.clear()
         raise cherrypy.HTTPRedirect('/')
 
     @cherrypy.expose
-    def account(self):
+    def account(self):  # DONE
         user_id = cherrypy.session.get('user_id')
         if not user_id:
             raise cherrypy.HTTPRedirect('/login')
@@ -71,27 +71,28 @@ class IdP:
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def create_account(self, username, email, password):
+    def create_account(self, username, email, password):  # RETURN DONE
         account_id = self.database_service.create_user(username, email, password)
 
         requests.post('http://localhost:8083/save_tmp_credentials', data={
             'username': username,
             'email': email,
             'password': password,
-            'idp': 'http://localhost:8082'
+            'idp': 'http://localhost:8082'  # TODO: Put it in a variable
         })
 
         if account_id is not None:
-            return {'status': 'OK', 'account_id': account_id}
+            return create_inner_message("OK", data={"account_id": account_id})
         else:
-            return {'status': 'ERROR'}
+            return create_inner_message("ERROR", message="Error creating a new account")
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def update_account(self, user_id, password, **kwargs):
+    def update_account(self, user_id, password, **kwargs):  # RETURN DONE
         saved_user = self.database_service.get_user_by_id(user_id, as_dict=True)
+
         if not self.database_service.get_user_for_login(saved_user.get('username'), password):
-            return {'status': 'ERROR', 'message': 'Wrong password'}
+            return create_inner_message("ERROR", message="Wrong password")
 
         kwargs['password'] = kwargs.pop('new_password', None)
 
@@ -104,22 +105,22 @@ class IdP:
             new_args[k] = v
 
         if len(new_args) == 0:
-            return {'status': 'NOTHING'}
+            return create_inner_message("NOTHING")
 
         update_status = self.database_service.update_user(user_id, new_args)
-        if update_status:
-            return {'status': 'OK'}
-        else:
-            return {'status': 'ERROR', 'message': 'Error while updating credentials'}
+        if not update_status:
+            return create_inner_message("ERROR", message="Error while updating credentials")
+
+        return create_inner_message("OK")
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
-    def delete_account(self, account_id):
+    def delete_account(self, account_id):  # RETURN DONE
         removal_status = self.database_service.delete_user(account_id)
-        if removal_status:
-            return {'status': 'OK'}
-        else:
-            return {'status': 'ERROR'}
+        if not removal_status:
+            return create_inner_message("ERROR", "Error deleting this account")
+
+        return create_inner_message("OK")
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
@@ -129,39 +130,37 @@ class IdP:
             self.zkp_service.invalidate_user(self.cache.clear_cache_by_uid(uid))
             return message_wrapper(None, None, 'No secret key')
 
-        secret = self.cache.uid2secret[uid]
         data = message_unwrapper(data, secret).get('data')
 
         try:
-            username = data['username']
-            iterations_interval = data['iterations_interval']
+            username = data.get('username')
+            iterations_interval = data.get('iterations_interval')
             user = self.database_service.get_user(username, as_dict=True)
             if not user:
                 self.cache.clear_cache_by_uid(uid)
                 inner_message = create_inner_message('NO USER', message=f'User {username} does not exists in IDP')
                 return message_wrapper(inner_message, secret)
 
-            password = user.get('password')
-            zpk_iterations_data = self.zkp_service.negotiate_iterations(username, password, iterations_interval)
-            if zpk_iterations_data.get('status') == 'NO AGREEMENT':
-                return {'status': 'NO AGREEMENT', 'interval': self.zkp_service.iterations_interval}
+            zpk_iterations_data = self.zkp_service.negotiate_iterations(username, user.get('password'),
+                                                                        iterations_interval)
+            if zpk_iterations_data.get('status') != 'OK':
+                return message_wrapper(zpk_iterations_data, secret)
 
-            if zpk_iterations_data.get('status') == 'OK':
-                # Map between uid and username for further requests
-                self.cache.uid2user[uid] = username
-                self.cache.user2uid[username] = uid
-                protocol_data = {
-                    'iterations': zpk_iterations_data.pop('iterations', None),
-                    'garbage': base64.b64encode(os.urandom(8)).decode()
-                }
-                cipher_data, cipher_tag = encrypt_request_data(protocol_data, secret)
-                zpk_iterations_data['cipher_data'], zpk_iterations_data['cipher_tag'] = cipher_data, cipher_tag
+            # Map between uid and username for further requests
+            self.cache.uid2user[uid] = username
+            self.cache.user2uid[username] = uid
+            protocol_data = {
+                'iterations': zpk_iterations_data.pop('iterations', None),
+                'garbage': base64.b64encode(os.urandom(8)).decode()
+            }
+            cipher_data, cipher_tag = encrypt_request_data(protocol_data, secret)
+            zpk_iterations_data['cipher_data'], zpk_iterations_data['cipher_tag'] = cipher_data, cipher_tag
 
-                return zpk_iterations_data
+            return zpk_iterations_data
 
-        except KeyError:
+        except Exception:
             self.cache.clear_cache_by_uid(uid)
-            inner_message = create_inner_message("ERROR", message="Invalid arguments")
+            inner_message = create_inner_message("ERROR", message="Error in iterations negotiation")
             return message_wrapper(inner_message, secret)
 
     @cherrypy.expose
