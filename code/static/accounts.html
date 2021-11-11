@@ -294,7 +294,7 @@
                           </span>
                           {% if authenticate %}
                         <span class="input-group-btn">
-                          <button  class="btn btn-success reveal" type="button" onclick="authenticate('${entry.id}')">Use this account to authenticate with biometrics</button>
+                          <button  class="btn btn-success reveal" type="button" onclick="authenticate('${entry.id}')">Use this account to authenticate</button>
                       </span>
                       {% endif %}
                 </div>
@@ -305,8 +305,8 @@
     })
 
     function authenticate(account_id) {
-        //window.location.replace(`/accounts?account_id=${account_id}`);
-        window.location.replace('/biometric_authentication')
+        window.location.replace(`/accounts?account_id=${account_id}`);
+        //window.location.replace('/biometric_authentication')
     }
 
 

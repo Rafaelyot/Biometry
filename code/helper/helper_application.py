@@ -4,7 +4,6 @@ from utils import hash_password, generate_rsa_keys, aes_encrypt, static_page, er
     decrypt_request_data, export_private_key
 from zkp_protocol import calc_result_bit, f, random_challenge
 from jinja2 import Environment, FileSystemLoader
-from biometric_systems.facial import facial_recognition
 import cherrypy
 import requests
 import base64
@@ -705,7 +704,7 @@ class Application(object):
                     return self.zkp_authentication(secret, username, password, uid, account_id, master_password)
 
         template = self.jinja_env.get_template('accounts.html')
-        return template.render(authenticate=True, idp_url=self.idp_url)
+        return template.render(authenticate=authenticate, idp_url=self.idp_url)
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
@@ -916,9 +915,11 @@ class Application(object):
         return {'status': 'OK', 'operation': True}
 
     @cherrypy.expose
-    def biometric_authentication(self):
-        # self.face_biometry.register_new_user()
-        self.face_biometry.verify_user()
+    def biometric_authentication(self, operation):
+        if operation == 'r':
+            self.face_biometry.register_new_user()
+        elif operation == 'v':
+            self.face_biometry.verify_user()
 
 
 server_config = {
