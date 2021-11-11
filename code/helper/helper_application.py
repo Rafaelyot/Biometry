@@ -1,3 +1,4 @@
+from biometric_systems.facial.facial_recognition import Face_biometry
 from utils import hash_password, generate_rsa_keys, aes_encrypt, static_page, error_page, read_private_key, \
     rsa_private_key_decrypt, rsa_private_key_sign, is_ttl_valid, scrypt_password, aes_decrypt, encrypt_request_data, \
     decrypt_request_data, export_private_key
@@ -435,6 +436,8 @@ class Application(object):
         self.temp = {}
         self.auth_error = "Authentication process failed. <br> This can occur because local credentials are wrong. " \
                           "Try to change this on <a href=\"http://localhost:8083\">http://localhost:8083</a>"
+
+        self.face_biometry = Face_biometry('escaleira')
 
     def set_cookie(self, key, value):
         cookie = cherrypy.response.cookie
@@ -914,11 +917,12 @@ class Application(object):
 
     @cherrypy.expose
     def biometric_authentication(self):
-        facial_recognition.recognition()
+        # self.face_biometry.register_new_user()
+        self.face_biometry.verify_user()
 
 
 server_config = {
-    'server.socket_host': 'localhost',
+    'server.socket_host': '127.0.0.1',
     'server.socket_port': 8083,
     'server.thread_pool': 50,
     'tools.sessions.on': True,
