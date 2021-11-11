@@ -20,5 +20,4 @@ def calc_result_bit(response, is_legit=True):
         return int.from_bytes(os.urandom(1), 'big') & 1
 
 
-def random_challenge(size=64):
-    return os.urandom(size)
+

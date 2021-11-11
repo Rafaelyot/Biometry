@@ -112,11 +112,48 @@ def encrypt_request_data(data, secret):
     return message, tag
 
 
-def decrypt_request_data(message, tag, secret):
+def decrypt_request_data(message, secret, tag):
     tag = base64.urlsafe_b64decode(tag)
     data = json.loads(aes_decrypt(base64.urlsafe_b64decode(message), tag, secret))
 
     return data
+
+
+def create_inner_message(status, message=None, data=None, generate_garbage=True):
+    content = {
+        'status': status,
+        'message': message,
+        'data': data
+    }
+    if generate_garbage:
+        content['garbage'] = base64.b64encode(os.urandom(8)).decode()
+    return content
+
+
+def message_wrapper(message, secret, status='OK'):
+    ciphertext, tag = encrypt_request_data(message, secret)
+    return {
+        'message': ciphertext,
+        'tag': tag,
+        'status': status
+    }
+
+
+def message_unwrapper(message, secret, pop_garbage=True):
+    ciphertext, tag = message['message'], message['tag']
+    data = decrypt_request_data(ciphertext, secret, tag)
+    if pop_garbage:
+        data.pop('garbage', None)
+
+    return data
+
+
+def is_valid_wrapper(message):
+    return message['status'] == 'OK'
+
+
+def invalid_wrapper():
+    return create_inner_message('INVALID WRAPPER')
 
 
 def is_ttl_valid(ttl):
@@ -141,3 +178,23 @@ def get_ip_address():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(('8.8.8.8', 1))
     return s.getsockname()[0]
+
+
+def random_challenge(size=64):
+    return os.urandom(size)
+
+
+def show_blank_page_on_error(cherrypy):
+    for key_value in cherrypy.request.cookie.keys():
+        cherrypy.request.cookie[key_value] = ''
+        cherrypy.request.cookie[key_value]['max-age'] = '0'
+        cherrypy.request.cookie[key_value]['expires'] = '0'
+
+    for key_value in cherrypy.response.cookie.keys():
+        cherrypy.response.cookie[key_value] = ''
+        cherrypy.response.cookie[key_value]['max-age'] = '0'
+        cherrypy.response.cookie[key_value]['expires'] = '0'
+
+    cherrypy.response.status = 500
+
+    cherrypy.response.body = b'<html><head></head><body>INTERNAL ERROR</body></html>'

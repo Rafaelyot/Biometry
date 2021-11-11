@@ -1,0 +1,47 @@
+\section{Protocolos de autenticação}
+
+\subsection{Protocolo iterativo de autenticação usando técnicas de conhecimento nulo}
+
+\quad Umas das componentes principais deste projeto é a autenticação usando o protocolo ZKP, que permite realizar processos de autenticação (pela prova de conhecimento de um segredo partilhado) sem que o próprio segredo tenha que percorrer um determinado canal de comunicação, portanto, neste caso o processo de autenticação é realizado entre uma aplicação auxiliar, que é executada localmente no dispositivo do utilizador, e um IDP. Conceptualmente o IDP armazena dados de autenticação de um determinado utilizador \textit{(username, email, password, etc)}, e para que o processo de autenticação seja efetuado com sucesso pelo utilizador, é necessário este provar ao IDP que sabe a senha associada a uma determinada conta (que vai ser o segredo partilhado), esta prova de conhecimento é realizada através de um protocolo de comunicação entre a aplicação auxiliar do utilizador e o provedor de identidade, que vai ser explicado nesta secção.
+
+\subsubsection{Carateristicas protocolares do ZKP}
+
+\begin{itemize}
+    \item Este protocolo vai ter uma natureza iterativa, isto é, ambas as entidades vão trocar mensagens até estas ter a convicção suficiente que a outra entidade tem conhecimento do segredo partilhado.
+    \item Devido à caraterística anterior é necessário definir um numero de iterações mínimas, digamos \textbf{N}, que vai representar o número de mensagens enviadas por cada entidade durante a execução deste protocolo. Portanto, no final, este processo vai ter pelo menos \textbf{2N} mensagens trocadas. Na fase de definição do protocolo ZKP, deve ser assumido que ambas as entidades contribuem para a definição do valor de \textbf{N}. Em principio, quanto maior for o \textbf{N}, mais seguro é o protocolo mas também consome mais recursos computacionais e de rede, portanto é essencial encontrar uma solução equilibrada que faça o balanceamento entre a qualidade da autenticação e a prevenção de negação do serviço.
+    \item Cada mensagem trocada neste protocolo deve ter os seguintes parâmetros:
+    \begin{itemize}
+        \item \textbf{challenge}, que representa o valor de um desafio aleatório
+        \item \textbf{r}, que é um representa um \textit{bit} (0-1), que vai ser o parâmetro usado para verificar o estado do protocolo
+    \end{itemize}
+    \item O valor de \textbf{r} deve ser calculado tendo em conta todos os desafios recebidos e enviados até à iteração \textbf{i} e a senha partilhada \textbf{P}. \footnote{Todos os detalhes matemáticos serão clarificados na secção \ref{mat_zkp}}
+    \item Se em algum momento o valor de \textbf{r} recebido estiver incorreto, o recetor saberá imediatamente que o outro participante não é legitimo, mas ainda assim vai continuar a execução do protocolo com a pequena diferença que os valores de  \textit{r} vão ser números totalmente aleatórios. Desta forma, a entidade maliciosa não vai receber valores genuínos após a resposta errada, evitando que este obtenha dados suficientes para executar um ataque de adivinhação com sucesso.
+\end{itemize}
+
+\subsubsection{Considerações gerais na implementação do protocolo ZKP}
+
+\quad Uma vez que este protocolo de autenticação vai ser executado num ambiente \textit{Web}, onde existe a clara estrutura de um modelo cliente-servidor, o intercâmbio de mensagens entre as entidades vai ser feita seguindo o mesmo modelo. Neste caso o IDP vai ter o papel de servidor e a aplicação auxiliar o papel de cliente, isto é, todo o fluxo de execução deste protocolo vai ser iniciado pela aplicação auxiliar. Esta caraterística além de se enquadrar deveras bem no contexto de protocolos \textit{Web}, também acaba por agilizar os trabalhos de implementação uma vez que (teoricamente) o IDP é uma entidade publica que está associada a um domínio publico e acessível do exterior (internet), e portanto, é trivial enviar um pedido para o IDP. 
+
+\subsubsection{Negociação de N e cálculo de r no protocolo ZKP}
+\label{mat_zkp}
+
+\quad Uma das capacidades deste protocolo é o facto deste ser iterativo e portanto é necessário definir um número mínimo de iterações \textbf{N}. Durante a implementação do algoritmo de negociação do número de iterações (que em termos de implementação corresponde ao número de mensagens enviadas por cada entidade), o valor de \textbf{N} passa a representar exatamente o número de iterações do protocolo. O algoritmo consiste na partilha mútua de um intervalo que representa o número mínimo e máximo de iterações aceitáveis por cada entidade, onde o servidor verifica se existe uma intersecção válida entre esses dois conjuntos, e caso exista o valor com maiores dimensões (do conjunto proveniente da intersecção) é escolhido e, posteriormente, enviado para a \textit{helper application}.
+
+\begin{minipage}{\linewidth}
+    \begin{lstlisting}[language=bash, caption={Utilização do \textit{Binwalk} para obter os ficheiros embebidos no documento sob análise.}, label={lst:binwalk}]
+    $ binwalk -D='.*' document.\textit{PDF}
+    
+    DECIMAL       HEXADECIMAL     DESCRIPTION
+    --------------------------------------------------------------------------------
+    56            0x38            PDF document, version: "1.6"
+    95            0x5F            ELF, 64-bit LSB shared object, AMD x86-64, version 1 (SYSV)
+    18959         0x4A0F          PDF document, version: "1.4"
+    19057         0x4A71          Zlib compressed data, default compression
+    19296         0x4B60          Zlib compressed data, default compression
+    30404         0x76C4          Zlib compressed data, default compression
+    
+    \end{lstlisting}
+    \end{minipage}
+
+
+\subsection{Protocolo de autenticação usando credencias assimétricas}

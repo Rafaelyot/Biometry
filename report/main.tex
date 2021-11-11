@@ -1,0 +1,171 @@
+\documentclass{article}
+
+% Margin definition.
+\usepackage[a4paper,total={6.8in, 8.5in}]{geometry}
+\usepackage{parskip}
+\usepackage[bottom]{footmisc}
+% Images.
+\usepackage{graphicx}
+\usepackage[export]{adjustbox}
+\usepackage{float}
+% Table
+\usepackage{array}
+\usepackage[toc,page]{appendix}
+% Links.
+\usepackage[T1,hyphens]{url}
+\usepackage[hidelinks, bookmarks=true]{hyperref}
+% Encoding.
+\usepackage[utf8]{inputenc}
+% Helvetic font.
+\usepackage[scaled]{helvet}
+\renewcommand\familydefault{\sfdefault} 
+% Header for ua logo.
+\usepackage{fancyhdr}
+% Dots in index.
+\usepackage[titles]{tocloft}
+\renewcommand{\cftsubsubsecleader}{\Large\cftdotfill{0}}
+\renewcommand{\cftsubsecleader}{\Large\cftdotfill{0}}
+\renewcommand{\cftsecleader}{\Large\cftdotfill{0}}
+\renewcommand{\cftsecfont}{\large\bfseries\scshape}
+\renewcommand{\cftsubsecfont}{\scshape}
+\renewcommand{\cftsubsubsecfont}{\small\scshape}
+\addtolength{\cftsecnumwidth}{5pt}
+\renewcommand*{\HyperDestNameFilter}[1]{\jobname-#1}
+% Dot after number in (sub)sections and in toc.
+\renewcommand{\cftsecaftersnum}{.}
+\renewcommand{\cftsubsecaftersnum}{}
+\usepackage[letterspace=45]{microtype}
+\newcommand*{\fullref}[1]{\hyperref[{#1}]{\autoref*{#1} \nameref*{#1} \urlref*{#1}}}
+% Header with ua logo definition. 
+\pagestyle{fancy}
+\fancyhf{}
+\chead{
+    \includegraphics[height=0.5in]{./img/header_ua.png}
+}
+\setlength\headheight{45pt}
+% Footer with page number.
+\rfoot{Page \thepage}
+\renewcommand{\footrulewidth}{0.4pt}
+% Rename table of contents title to "Index"
+% \renewcommand{\contentsname}{\Large Index \vspace{0.3cm}}
+
+% for code
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily,
+  columns=fullflexible,
+  frame=single,
+  breaklines=true,
+  postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+}
+\usepackage{xcolor}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    inputencoding=utf8
+}
+
+\lstset{style=mystyle}
+
+\usepackage{float}
+\usepackage{subfig}
+
+
+% for the references
+\usepackage[nottoc,numbib]{tocbibind}
+
+% section on new page, except the index one
+\usepackage{etoolbox}
+\pretocmd{\section}{%
+  \ifnum\value{section}=0 \else\clearpage\fi
+}{}{}
+
+
+%encoding
+%--------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+%--------------------------------------
+
+%Portuguese-specific commands
+%--------------------------------------
+% \usepackage[portuguese]{babel}
+%--------------------------------------
+
+%Hyphenation rules
+%--------------------------------------
+\usepackage{hyphenat}
+\hyphenation{mate-mática recu-perar}
+%--------------------------------------
+
+\usepackage{mathtools}
+\usepackage{makecell}
+
+
+\makeatletter
+\renewcommand{\maketitle}{\bgroup\setlength{\parindent}{10pt}
+\begin{flushleft}
+  \textbf{\Huge \@title}
+
+  \large{\textbf{\@author}}\\
+  \vspace{0.3cm}
+  \normalsize{\@date}\\
+\end{flushleft}\egroup
+}
+\makeatother
+\title{Gestão de identidades centradas no utente}
+\author{Rafael José Santos Simões\\\normalsize{rafaeljsimoes@ua.pt}}
+\date{26/06/2021}
+
+
+\begin{document}
+
+\maketitle
+\vspace{1cm}
+
+\thispagestyle{empty}
+
+
+\tableofcontents
+
+\newpage
+
+\fontsize{12pt}{13pt}
+\selectfont
+\lsstyle
+
+\input{sections/introduction.tex}
+\input{sections/formato.tex}
+\input{sections/protocol_identity.tex}
+\input{sections/extras.tex}
+
+
+\end{document}

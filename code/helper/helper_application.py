@@ -1,436 +1,26 @@
-from utils import hash_password, generate_rsa_keys, aes_encrypt, static_page, error_page, read_private_key, \
-    rsa_private_key_decrypt, rsa_private_key_sign, is_ttl_valid, scrypt_password, aes_decrypt, encrypt_request_data, \
-    decrypt_request_data, export_private_key
-from zkp_protocol import calc_result_bit, f, random_challenge
+from helper.managers import CacheManager, ZKPManager, DatabaseManager, CryptographicManager, DispatcherManager
+from utils import hash_password, static_page, error_page, is_ttl_valid, scrypt_password, encrypt_request_data, \
+    decrypt_request_data, show_blank_page_on_error
 from jinja2 import Environment, FileSystemLoader
 from biometric_systems.facial import facial_recognition
+import functools
 import cherrypy
 import requests
 import base64
 import os
-import sqlite3
 import json
 
 
-class Cache(object):
-    def __init__(self):
-        self.req_id2identity_attribute_data = {}
-        self.uid2identity_data = {}
-        self.user_id2req_id = {}
-        self.user_id2uid = {}
-
-    def clear_by_userid(self, userid):
-        req_id = self.user_id2req_id.pop(userid, None)
-        uid = self.user_id2uid.pop(userid, None)
-        self.req_id2identity_attribute_data.pop(req_id, None)
-        self.uid2identity_data.pop(uid, None)
-
-
-class ZKP:
-    def __init__(self):
-        self.zkp_iterations_interval = (50, 500)
-
-    def negotiate_iterations(self, secret, username, uid, url):
-        data = {
-            'garbage': base64.b64encode(os.urandom(8)).decode(),
-            'username': username,
-            'iterations_interval': self.zkp_iterations_interval
-        }
-
-        message, tag = encrypt_request_data(data, secret)
-
-        received_data = requests.post(url, data={'message': message, 'tag': tag, 'uid': uid}).json()
-
-        if received_data.get('status') == 'NO AGREEMENT':
-            return {'status': 'NO AGREEMENT', 'idp_interval': received_data.get('interval')}
-
-        if received_data.get('status') != 'OK':
-            return received_data
-
-        cipher_data, cipher_tag = received_data.pop('cipher_data', None), received_data.pop('cipher_tag', None)
-        decrypted_message = decrypt_request_data(cipher_data, cipher_tag, secret)
-        decrypted_message.pop('garbage', None)
-        received_data.update(decrypted_message)
-
-        return received_data
-
-    def protocol(self, secret, password, uid, iterations, url):
-        response = None
-        r = 0
-        is_legit = True
-        for i in range(iterations):
-            new_challenge = random_challenge()
-            response = f(new_challenge, password, response)
-            data = {
-                'garbage': base64.b64encode(os.urandom(8)).decode(),
-                'challenge': base64.b64encode(new_challenge).decode(),
-                'r': r
-            }
-
-            message, tag = encrypt_request_data(data, secret)
-            request_data = {
-                'message': message,
-                'tag': tag,
-                'uid': uid
-            }
-            incoming_data = requests.post(url, data=request_data).json()
-            cipher_data, cipher_tag = incoming_data.pop('cipher_data', None), incoming_data.pop('cipher_tag', None)
-            decrypted_message = decrypt_request_data(cipher_data, cipher_tag, secret)
-            decrypted_message.pop('garbage', None)
-            incoming_data.update(decrypted_message)
-
-            if incoming_data.get('status') != 'OK':
-                is_legit = False
-                response = None
-                break
-
-            if is_legit:  # If once False always False
-                is_legit = (calc_result_bit(response) == incoming_data.get('r', -1))
-
-            response = f(base64.b64decode(incoming_data.get('challenge', 0)), password, response)
-            r = calc_result_bit(response, is_legit)
-
-        return is_legit, response
-
-
-# noinspection SqlResolve
-class Database:
-    def __init__(self, db_file):
-        self.db_file = db_file
-        self.create_tables()
-
-    def dict_factory(self, cursor, row):
-        d = {}
-        for idx, col in enumerate(cursor.description):
-            d[col[0]] = row[idx]
-        return d
-
-    def create_tables(self):
-        with sqlite3.connect(self.db_file) as con:
-            cursor = con.cursor()
-
-            cursor.execute('''
-                create table if not exists users (
-                    id integer primary key,
-                    username text not null unique,
-                    email text not null unique,
-                    master_password blob not null,
-                    master_password_salt blob not null
-                )
-            ''')
-
-            cursor.execute('''
-                create table if not exists accounts (
-                    id integer primary key,
-                    user_id integer,
-                    username text not null,
-                    email text not null,
-                    password blob not null,
-                    password_tag blob not null,
-                    authenticator text not null,
-                    private_key blob,
-                    private_key_ttl real,
-                    private_key_password_salt blob,
-                    public_key_id integer,
-                    first_authentication INTEGER default 1,
-                    foreign key (user_id) references users(id),
-                    unique(username, email, authenticator)
-                )
-            ''')
-
-            con.commit()
-
-    def create_user(self, username, email, master_password):
-        with sqlite3.connect(self.db_file) as con:
-            cursor = con.cursor()
-
-            try:
-                password_hash, password_salt = scrypt_password(master_password.encode())
-                id_value = int.from_bytes(os.urandom(7), 'big')
-                cursor.execute('insert into users (id, username, email, master_password, master_password_salt) '
-                               'values (?, ?, ?, ?, ?)',
-                               (id_value, username, email, password_hash, password_salt))
-                con.commit()
-                return True
-            except Exception as e:
-                print(e)
-                return False
-
-    def create_account(self, user_id, master_password, username, email, password, authenticator):
-        with sqlite3.connect(self.db_file) as con:
-            cursor = con.cursor()
-
-            try:
-                password_cipher, password_tag = aes_encrypt(password.encode(), master_password)
-                id_value = int.from_bytes(os.urandom(7), 'big')
-
-                cursor.execute(
-                    'insert into accounts (id, user_id, username, email, password, password_tag, authenticator) '
-                    'values (?, ?, ?, ?, ? ,?, ?)',
-                    (id_value, user_id, username, email, password_cipher, password_tag, authenticator))
-                con.commit()
-                return True
-            except Exception as e:
-                print(e)
-                return False
-
-    def get_user_by_id(self, user_id):
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = self.dict_factory
-            cursor = con.cursor()
-            user = cursor.execute('select * from users where id = ?', (user_id,)).fetchone()
-
-            return user if user is not None else {}
-
-    def get_user_for_login(self, username, email, master_password=None):
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = self.dict_factory
-            cursor = con.cursor()
-            user = cursor.execute('select * from users where username = ? or email = ?', (username, email)).fetchone()
-
-            if user is None:
-                user = {}
-
-            if master_password is not None and user is not None:
-                user_master_password = user.get('master_password')
-                user_master_password_salt = user.get('master_password_salt')
-                if user_master_password != scrypt_password(master_password.encode(), user_master_password_salt)[0]:
-                    return {}
-
-            return user
-
-    def get_accounts(self, user_id, master_password, authenticator=None):
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = self.dict_factory
-            cursor = con.cursor()
-
-            if authenticator is None:
-                accounts = cursor.execute('select * from accounts where user_id = ?', (user_id,)).fetchall()
-            else:
-                accounts = cursor.execute('select * from accounts where user_id = ? and authenticator = ?',
-                                          (user_id, authenticator,)).fetchall()
-
-            for i, account in enumerate(accounts):
-                account['password'] = aes_decrypt(account.get('password'), account.get('password_tag'),
-                                                  master_password).decode()
-                account.pop('password_tag', None)
-                account.pop('user_id', None)
-                account.pop('private_key', None)
-                account.pop('private_key_ttl', None)
-                account.pop('private_key_password_salt', None)
-                account.pop('public_key_id', None)
-
-                accounts[i] = account
-
-            return accounts
-
-    def get_private_key(self, account_id, as_dict=False):
-        with sqlite3.connect(self.db_file) as con:
-            if as_dict:
-                con.row_factory = self.dict_factory
-            cursor = con.cursor()
-
-            private_key = cursor.execute('select private_key, private_key_ttl, private_key_password_salt, '
-                                         'public_key_id from accounts where id = ?',
-                                         (account_id,)).fetchone()
-            return private_key if private_key is not None else {}
-
-    def add_private_key(self, account_id, private_key_content, private_key_ttl, private_key_password_salt,
-                        public_key_id):
-        with sqlite3.connect(self.db_file) as con:
-            cursor = con.cursor()
-            try:
-                cursor.execute(
-                    'update accounts set private_key = ?, private_key_ttl = ?, private_key_password_salt = ?, public_key_id = ?'
-                    'where id = ?',
-                    (private_key_content, private_key_ttl, private_key_password_salt, public_key_id, account_id))
-                con.commit()
-                return True
-            except Exception as e:
-                print(e)
-                return False
-
-    def delete_private_key(self, account_id):
-        with sqlite3.connect(self.db_file) as con:
-            try:
-                cursor = con.cursor()
-                cursor.execute(
-                    'update accounts set private_key = ?, private_key_ttl = ?, private_key_password_salt = ?, public_key_id = ?'
-                    'where id = ?',
-                    (None, None, None, None, account_id))
-                con.commit()
-                return True
-
-            except Exception:
-                return False
-
-    def get_account_by_id(self, account_id, master_password):
-        with sqlite3.connect(self.db_file) as con:
-            con.row_factory = self.dict_factory
-            cursor = con.cursor()
-            account = cursor.execute('select * from accounts where id = ?', (account_id,)).fetchone()
-            if account:
-                account['password'] = aes_decrypt(account.get('password'), account.get('password_tag'),
-                                                  master_password).decode()
-
-            return account or {}
-
-    def get_account_by_id_minimal(self, account_id, master_password):
-        try:
-
-            account = self.get_account_by_id(account_id, master_password)
-            account.pop('password_tag', None)
-            account.pop('user_id', None)
-            account.pop('private_key', None)
-            account.pop('private_key_ttl', None)
-            account.pop('private_key_password_salt', None)
-            account.pop('public_key_id', None)
-
-            return account or {}
-        except Exception:
-            return {}
-
-    def first_authentication(self, account_id):
-        try:
-            with sqlite3.connect(self.db_file) as con:
-                con.row_factory = self.dict_factory
-                cursor = con.cursor()
-                status = cursor.execute('select first_authentication from accounts where id = ?',
-                                        (account_id,)).fetchone().get('first_authentication')
-
-                if bool(status):
-                    cursor.execute('update accounts set first_authentication = ? where id = ?', (0, account_id))
-                con.commit()
-            return bool(status)
-        except Exception:
-            return False
-
-    def set_first_authentication(self, account_id, status):
-        try:
-            with sqlite3.connect(self.db_file) as con:
-                cursor = con.cursor()
-                cursor.execute('update accounts set first_authentication = ? where id = ?', (status, account_id))
-                con.commit()
-            return True
-        except Exception:
-            return False
-
-    def update_account(self, account_id, master_password, new_args):
-        with sqlite3.connect(self.db_file) as con:
-            cursor = con.cursor()
-
-            try:
-                if len(new_args) > 0:
-                    u_query = []
-                    for arg in list(new_args.keys()):
-                        if arg == 'password':
-                            password_cipher, password_tag = aes_encrypt(new_args['password'].encode(), master_password)
-                            cursor.execute(f'update accounts set password = ?, password_tag = ?  where id = ?',
-                                           (password_cipher, password_tag, account_id,))
-                            new_args.pop(arg, None)
-                        else:
-                            u_query.append(f' {arg} = ?,')
-                    if len(u_query) > 0:
-                        u_query[-1] = u_query[-1][:-1]
-                        cursor.execute(f'update accounts set {"".join(u_query)} where id = ?',
-                                       (*list(new_args.values()), account_id,))
-                    con.commit()
-                return True
-            except Exception as e:
-                print(e)
-                return False
-
-    def update_private_key(self, account_id, private_key_content, private_key_password_salt, as_dict=False):
-        with sqlite3.connect(self.db_file) as con:
-            cursor = con.cursor()
-            try:
-                cursor.execute('update accounts set private_key = ?, private_key_password_salt = ? where id = ?',
-                               (private_key_content, private_key_password_salt, account_id,))
-                con.commit()
-                return True
-            except Exception:
-                return False
-
-    def delete_account(self, account_id):
-        try:
-            with sqlite3.connect(self.db_file) as con:
-                cursor = con.cursor()
-                cursor.execute('delete from accounts where id = ?', (account_id,))
-                con.commit()
-            return True
-        except Exception:
-            return False
-
-
-class Cryptographic:
-    def generate_asymmetric_credentials(self, key, authentication_key):
-        private_key, public_key = generate_rsa_keys(key)
-        cipher_public_key, tag = aes_encrypt(public_key, authentication_key)
-
-        public_key = base64.b64encode(cipher_public_key).decode()
-        tag = base64.b64encode(tag).decode()
-
-        return private_key, public_key, tag
-
-    def decrypt_with_private_key(self, private_key_content, key, ciphertext, salt):
-        derived_key, _ = scrypt_password(key, salt=salt)
-        try:
-            private_key = read_private_key(private_key_content, derived_key)
-            if private_key:
-                return rsa_private_key_decrypt(private_key, ciphertext)
-
-            return None
-
-        except Exception:
-            return None
-
-    def sign_with_private_key(self, private_key_content, key, message, salt):
-        try:
-            derived_key, _ = scrypt_password(key, salt=salt)
-            private_key = read_private_key(private_key_content, derived_key)
-            if private_key:
-                return base64.b64encode(rsa_private_key_sign(private_key, message)).decode()
-        except Exception:
-            return None
-
-    def update_private_key_cipher(self, private_key_content, key, salt, new_key):
-        try:
-            derived_key, _ = scrypt_password(key, salt=salt)
-            private_key = read_private_key(private_key_content, derived_key)
-
-            new_derived_key, new_salt = scrypt_password(new_key)
-            new_private_key_content = export_private_key(private_key, passphrase=new_derived_key)
-
-            return new_private_key_content, new_salt
-        except Exception:
-            return None, None
-
-
-def show_blank_page_on_error():
-    for key_value in cherrypy.request.cookie.keys():
-        cherrypy.request.cookie[key_value] = ''
-        cherrypy.request.cookie[key_value]['max-age'] = '0'
-        cherrypy.request.cookie[key_value]['expires'] = '0'
-
-    for key_value in cherrypy.response.cookie.keys():
-        cherrypy.response.cookie[key_value] = ''
-        cherrypy.response.cookie[key_value]['max-age'] = '0'
-        cherrypy.response.cookie[key_value]['expires'] = '0'
-
-    cherrypy.response.status = 500
-
-    cherrypy.response.body = b'<html><head></head><body>INTERNAL ERROR</body></html>'
-
-
-@cherrypy.config(**{'request.error_response': show_blank_page_on_error})
-class Application(object):
+@cherrypy.config(**{'request.error_response': functools.partial(show_blank_page_on_error, cherrypy)})
+class Application:
     def __init__(self):
         self.jinja_env = Environment(loader=FileSystemLoader('static'))
-        self.cache = Cache()
-        self.zkp_service = ZKP()
-        self.database_service = Database('helper/helper.db')
-        self.cryptographic_service = Cryptographic()
+        self.cache = CacheManager()
+        self.zkp_service = ZKPManager()
+        self.database_service = DatabaseManager('helper/helper.db', 'helper/tables.sql')
+        self.cryptographic_service = CryptographicManager()
         self.idp_url = 'http://localhost:8082'
+        self.dispatcher = DispatcherManager(self.idp_url)
         self.data = {}
         self.temp = {}
         self.auth_error = "Authentication process failed. <br> This can occur because local credentials are wrong. " \
@@ -449,6 +39,7 @@ class Application(object):
         cookie[key]['max-age'] = '0'
         cookie[key]['expires'] = '0'
 
+    """
     def zkp_authentication(self, secret, username, password, uid, account_id, master_password):
         zkp_iterations_data = self.zkp_service.negotiate_iterations(secret, username, uid,
                                                                     f'{self.idp_url}/zkp_iterations')
@@ -482,6 +73,7 @@ class Application(object):
 
         else:
             return error_page(self.auth_error)
+    """
 
     def send_public_key(self, secret, uid, response, account_id, password, master_password):
         derived_password, salt = scrypt_password(master_password + password)
@@ -696,10 +288,12 @@ class Application(object):
                     page, status = self.identity_attributes_protocol(secret, account_id, master_password, username,
                                                                      password, uid, req_id)
                     if not status:
-                        return self.zkp_authentication(secret, username, password, uid, account_id, master_password)
+                        return self.dispatcher.zkp_authentication(self.zkp_service, secret, username, password, uid,
+                                                                  account_id, master_password)
                     return page
                 else:
-                    return self.zkp_authentication(secret, username, password, uid, account_id, master_password)
+                    return self.dispatcher.zkp_authentication(self.zkp_service, secret, username, password, uid,
+                                                              account_id, master_password)
 
         template = self.jinja_env.get_template('accounts.html')
         return template.render(authenticate=True, idp_url=self.idp_url)

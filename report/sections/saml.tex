@@ -1,0 +1,141 @@
+\section{Security Assertion Markup Language - SAML}
+\label{saml}
+\quad Um dos objetivos da implementação deste projeto era a familiarização com o padrão aberto de troca de dados de autenticação e autorização entre entidades, mais particularmente um provedor de identidade (IDP) e um provedor de serviço (SP) - \textbf{Security Assertion Markup Language (SAML)} \cite{SAML}. O caso de uso deste projeto enquadra-se com o perfil de \textit{Web Browser SSO} que é um dos inúmeros perfis definidos pelo SAML que descreve e restringe o uso de protocolos de mensagens e asserções do SAML para resolver caso de usos de negócios informático específicos.
+
+\quad Sempre que o utilizador tenta aceder a um serviço que não tem sessão iniciada, o SP inicia  a troca de mensagens e asserções com o IDP sobre a estrutura definida pelo SAML. Esta secção vai expor o fluxo de mensagens e a estrutura das mesmas quando o SP inicia o processo de obtenção de dados de autenticação e/ou autorização ao IDP para poder estabelecer uma sessão com o utilizador. Neste caso, vamos considerar o fluxo começado pelo SP, isto é, o utilizador tenta aceder a um serviço e este serviço começa a troca de mensagens caso não exista uma sessão iniciada. Apenas de referir, que cada entidade tem uma chave privada e um certificado publico associados, que serão usados para efeitos de assinatura de mensagens e asserções para garantir a autenticidade e privacidade das mesmas. Portanto, seguindo o perfil de \textit{SP-Initiated SSO: Redirect/POST Bindings}, temos:
+
+\begin{enumerate}
+    \item O utilizador tenta aceder a um recurso exposto pelo SP. O utilizador não tem nenhuma sessão valida. O SP envia uma resposta \textit{HTTP redirect}  para o \textit{browser} (com o HTTP status a 302 ou 303). Juntamente com esta resposta, é enviado uma mensagem do tipo <AuthnRequest> codificada como um argumento do URL, cuja variável é nomeada de \textit{SAMLRequest}.
+    \begin{lstlisting}[language=xml, caption={Exemplo de um <AuthnRequest> enviado pelo SP}, label={lst:AuthnRequest}]
+        <ns0:AuthnRequest
+        xmlns:ns0="urn:oasis:names:tc:SAML:2.0:protocol"
+        xmlns:ns1="urn:oasis:names:tc:SAML:2.0:assertion"
+        xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" ID="id-1j5SGFFwF4oNdU05F" Version="2.0" IssueInstant="2021-06-06T04:07:08Z" Destination="http://localhost:8082/sso_redirect" ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" AssertionConsumerServiceURL="http://localhost:8081/identity">
+        <ns1:Issuer Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">http://localhost:8081/sp.xml</ns1:Issuer>
+        <ns2:Signature Id="Signature1">
+            <ns2:SignedInfo>
+                <ns2:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                <ns2:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha512"/>
+                <ns2:Reference URI="#id-1j5SGFFwF4oNdU05F">
+                    <ns2:Transforms>
+                        <ns2:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+                        <ns2:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                    </ns2:Transforms>
+                    <ns2:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"/>
+                    <ns2:DigestValue>itkmn8zWzJr+qFicDMApXp3/86YvsG61M/hlR3ec0F7Q//bUJrrS1/nSctRfBrc4
+    FLdixWsQoW8zijaJA0C5AA==</ns2:DigestValue>
+                </ns2:Reference>
+            </ns2:SignedInfo>
+            <ns2:SignatureValue>aJe6Kcy8rqLJb1DNUfBOPyjQVbnan+8A4yEkiCCgJZdTKgjf3qrlh/u5WmDTWkRl
+    QXdI4ZhYLAa3sO/UnqKWA3+bEpeUoiyhvE2z2xwl7LVLtaHjXbGTnVWm0/B7C6JI
+    BHtfClYII8ceNRISZgVLOB2hnVVWYLlxC1XWTnE1lUw=</ns2:SignatureValue>
+            <ns2:KeyInfo>
+                <ns2:X509Data>
+                    <ns2:X509Certificate>MIIC8jCCAlugAwIBAgIJAJHg2V5J31I8MA0GCSqGSIb3DQEBBQUAMFox
+                    CzAJBgNVBAYTAlNFMQ0wCwYDVQQHEwRVbWVhMRgwFgYDVQQKEw9VbWVhIFVuaXZlcnNpdHkxEDAOBg
+                    NVBAsTB0lUIFVuaXQxEDAOBgNVBAMTB1Rlc3QgU1AwHhcNMDkxMDI2MTMzMTE1WhcNMTAxMDI2MTMz
+                    MTE1WjBaMQswCQYDVQQGEwJTRTENMAsGA1UEBxMEVW1lYTEYMBYGA1UEChMPVW1lYSBVbml2ZXJzaX
+                    R5MRAwDgYDVQQLEwdJVCBVbml0MRAwDgYDVQQDEwdUZXN0IFNQMIGfMA0GCSqGSIb3DQEBAQUAA4GN
+                    ADCBiQKBgQDkJWP7bwOxtH+E15VTaulNzVQ/0cSbM5G7abqeqSNSs0l0veHr6/ROgW96ZeQ57fzVy2MCFiQRw2fzBs0n7leEmDJyVVtBTavYlhAVXDNa3stgvh43qCfLx+clUlOvtnsoMiiRmo7qf0BoPKTj7c0uLKpDpEbAHQT4OF1HRYVxMwIDAQABo4G/MIG8MB0GA1UdDgQWBBQ7RgbMJFDGRBu9o3tDQDuSoBy7JjCBjAYDVR0jBIGEMIGBgBQ7RgbMJFDGRBu
+                    9o3tDQDuSoBy7JqFepFwwWjELMAkGA1UEBhMCU0UxDTALBgNVBAcTBFVtZWExGDAWBgNVBAoTD1VtZW
+                    EgVW5pdmVyc2l0eTEQMA4GA1UECxMHSVQgVW5pdDEQMA4GA1UEAxMHVGVzdCBTUIIJAJHg2V5J31I8M
+                    AwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADgYEAMuRwwXRnsiyWzmRikpwinnhTmbooKm5TINP
+                    E7A7gSQ710RxioQePPhZOzkM27NnHTrCe2rBVg0EGz7QTd1JIwLPvgoj4VTi/fSha/tXrYUaqc9AqU
+                    1kWI4WN+vffBGQ09mo+6CffuFTZYeOhzP/2stAPwCTU4kxEoiy0KpZMANI=</ns2:X509Certificate>
+                </ns2:X509Data>
+            </ns2:KeyInfo>
+        </ns2:Signature>
+        <ns0:NameIDPolicy Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" AllowCreate="true"/>
+    </ns0:AuthnRequest>
+    \end{lstlisting}
+    O \textit{browser} processa a resposta de \textit{redirect} e emite um pedido \textit{HTTP GET} para o serviço de Single Sign-On (SSO) do IDP com o parâmetro de URL \textit{SAMLRequest}. As informações do estado local (ou pelo menos uma referencia para isso) é também incluído no pedido como um parâmetro de URL nomeado por \textit{RelayState}.
+    \item O serviço \textit{Single Sign-On} do IDP determina se o pedido SAML é valido de acordo com os parâmetros dos meta-dados de ambas as entidades. Caso o pedido seja válido, o idp interage com a \textit{helper application} para esta iniciar os protocolos de autenticação da secção \ref{auth_protocols}.  O utilizador providencia credenciais válidas e um contexto local seguro de \textit{logon} é criado.
+    \item O serviço \textit{Single Sign-On} do IDP constrói uma asserção SAML que representa o contexto seguro de \textit{logon} do utilizador. Uma vez que um \textit{binding POST} vai ser usado, a asserção é digitalmente assinada e cifrada (usando uma chave publica apenas para cifra de dados providenciada pelo SP) e depois é colocada dentro de uma mensagem de resposta de \textit{SAML}. A mensagem de resposta é encapsulada num formulário \textit{HTML} escondido com o método \textit{POST} com um parâmetro cujo nome é \textit{SAMLResponse}. Se o IDP recebeu um valor de \textit{RelayState} do pedido inicial enviado pelo SP, este deve ser adicionado ao formulário inalterado. O serviço de SSO envia o formulário \textit{HTML} para o \textit{browser} como uma resposta \textit{HTTP}.
+    \begin{lstlisting}[language=xml, caption={Exemplo de um resposta SAML com uma asserção cifrada e assinada enviado pelo IDP}, label={lst:assertion}]
+        <ns0:Response
+        xmlns:ns0="urn:oasis:names:tc:SAML:2.0:protocol"
+        xmlns:ns1="urn:oasis:names:tc:SAML:2.0:assertion"
+        xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" ID="id-dM4BW9UGzid4usz3Q" InResponseTo="id-v4QBeX2YaJqSzuk4L" Version="2.0" IssueInstant="2021-06-06T04:38:21Z" Destination="http://localhost:8081/identity">
+        <ns1:Issuer Format="urn:oasis:names:tc:SAML:2.0:nameid-format:entity">http://localhost:8082/idp.xml</ns1:Issuer>
+        <ns2:Signature Id="Signature1">
+            <ns2:SignedInfo>
+                <ns2:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                <ns2:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha512"/>
+                <ns2:Reference URI="#id-dM4BW9UGzid4usz3Q">
+                    <ns2:Transforms>
+                        <ns2:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+                        <ns2:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                    </ns2:Transforms>
+                    <ns2:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"/>
+                    <ns2:DigestValue>NkG4zUAAqZl7MJEPHcjXDr4isDTWojNJ1w/rLfGD35QI6nsvRw0zpM3PHiQAeBnf
+    j+/jXUg57naexMOFPgHZNg==</ns2:DigestValue>
+                </ns2:Reference>
+            </ns2:SignedInfo>
+            <ns2:SignatureValue>SBy7glEBU4Qg8Yi61ohSfJA0NMR0yo7h+Za97vZc6xKE3rDH8yjY/I/UJ/b3jmBz
+    wyHh64xi+rGpRazKFJ7SChNtzKeozm3eHWpyd9ILrWmPH/gcvfCMGTm/oUsddCb9
+    FK+2YtJgrwhkKaav+rtI5S1mkDnKK0KTYS7NpvDcOKE=</ns2:SignatureValue>
+            <ns2:KeyInfo>
+                <ns2:X509Data>
+                    <ns2:X509Certificate>MIIC8jCCAlugAwIBAgIJAJHg2V5J31I8MA0
+                    GCSqGSIb3DQEBBQUAMFoxCzAJBgNVBAYTAlNFMQ0wCwYDVQQHEwRVbW
+                    ...
+                    MuRwwXRnsiyWzmRikpwinnhTmbooKm5TINPE7A7gSQ710RxioQePPhZ
+                    OzkM27NnHTrCe2rBVg0EGz7QTd1JIwLPvgoj4VTi/fSha/tXrYUaqc9
+                    AqU1kWI4WN+vffBGQ09mo+6CffuFTZYeOhzP/2stAPwCTU4kxEoiy0KpZMANI=</ns2:X509Certificate>
+                </ns2:X509Data>
+            </ns2:KeyInfo>
+        </ns2:Signature>
+        <ns0:Status>
+            <ns0:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+        </ns0:Status>
+        <ns1:EncryptedAssertion>
+            <ns0:EncryptedData
+                xmlns:ns0="http://www.w3.org/2001/04/xmlenc#"
+                xmlns:ns1="http://www.w3.org/2000/09/xmldsig#" Id="ED_2f824523-b159-4c9a-8dd1-ee69f9cb648a" Type="http://www.w3.org/2001/04/xmlenc#Element">
+                <ns0:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#tripledes-cbc"/>
+                <ns1:KeyInfo>
+                    <ns0:EncryptedKey Id="EK_84ebb610-d580-4514-8b31-e6b2c0447fde">
+                        <ns0:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#rsa-1_5"/>
+                        <ns1:KeyInfo>
+                            <ns1:KeyName>my-rsa-key</ns1:KeyName>
+                        </ns1:KeyInfo>
+                        <ns0:CipherData>
+                            <ns0:CipherValue>uzM45tSUmDMjrjMfoLANEOJ2v2mUKIQPOkYtEcVl/80GTbTpIScDoOIlF8fi0w6M
+    BXXQi4ZMQoyYSctKY+d7Sb5ddyc238G3Hsp7AIup7GJnl6aIBcRvPpGczL+C2PpI
+    CP4IVv5/59O4R5RW264OqdimGB4+kNGcLVkOwHxp8nyvUraEnZlRdGk+ZREhZe60
+    NUsNRV3NOk7M7sEf28TrTXtxmCtR7W6MEjxwBTrkOAPh7N/6E7p+G4p+8Z8EvoYU
+    LWQxkw7MUnWnsV/0knT/QfTKqqIcSY0JMLzVrro6LNIQ8gXT2MtXHTZyYTiezKAJ
+    KasqTUJIaw0H3mCBJJJRGQ==</ns0:CipherValue>
+                        </ns0:CipherData>
+                    </ns0:EncryptedKey>
+                </ns1:KeyInfo>
+                <ns0:CipherData>
+                    <ns0:CipherValue>GQRpSV2+3mDzH7L+uyJgELCPVI/9zDq1ymKewdGimwPxdcQ93DcOhh8Qn6vZv5pf
+    nbsVgYCU/adusqNqgNLH6ZCPNwcAxeo/UpQCjePNrJ058vX7IW2w+Eg2+yJDuNT5
+    /K3pd1Gb7Py6kWlqeOfG+Ew8W0fusQ3JH78hYZnAis8MycRa73YnfxzxDXujrNXg
+    ...
+    jn5fI0rBhD44jfDUiH+KA0TW1fI/PQ4a4QIbgTIH6YFdsbY14vp4ZKFrPanEx4xu
+    Gnk5zvSFLrTTgKZLSND5ZTRdbTNG7EpqS1f+WNpXCRY=</ns0:CipherValue>
+                </ns0:CipherData>
+            </ns0:EncryptedData>
+        </ns1:EncryptedAssertion>
+    </ns0:Response>
+    \end{lstlisting}
+    \item O \textit{browser} devido a uma ação do utilizador ou da execução de um \textit{script} de auto-submissão, este emite um pedido \textit{HTTP POST} para enviar o formulário para o serviço de consumo de asserções (ACS) do SP. Este serviço obtém a mensagem de resposta, decifra e verifica a assinatura da asserção SAML, depois o SP usa as informações providenciadas pela asserção para criar uma sessão segura e privada com o utilizador. Assim que este processo tiver terminado, o SP recupera (caso seja necessário) o estado das informações locais indicadas pelo argumento \textit{RelayState}.
+\end{enumerate}
+
+
+\quad Durante a implementação deste padrão de intercâmbio de dados de autorização e/ou autenticação, foram implementados os devidos mecanismos que garantem o correto funcionamento deste mecanismo, ao assinar todas as mensagens e cifrar e assinar as asserções para garantir que só o SP tem acesso às informações descritas nessa mesma asserção. Neste caso de uso, apenas o \textit{email} do utilizador é enviado na asserção (encapsulado no atributo nameid) \ref{lst:response_clear}, pois é garantido que os emails são identificadores únicos para todos os utilizadores e uma vez que o conteúdo da asserção é cifrado não há o risco de algum atacante conseguir ler o conteúdo da mesma, pois só o SP (com a chave privada) consegues decifrar o seu conteúdo. A partir do momento em que o SP consegue identificar o utilizador este cria uma sessão, gerando um identificador \textit{random} que é armazenado em \textit{cookies} pelo cliente (\textit{browser}).
+
+
+\begin{minipage}{\linewidth}
+    \begin{lstlisting}[language=C, caption={Email encaplusado no atributo nameid}, label={lst:response_clear}, escapeinside={(*}{*)}]
+        <encas1:Subject>
+        <encas1:NameID NameQualifier="http://localhost:8082/idp.xml" SPNameQualifier="http://localhost:8081/sp.xml" Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">rafael@ua.pt</encas1:NameID>
+        <encas1:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+            <encas1:SubjectConfirmationData NotOnOrAfter="2021-06-06T05:59:21Z" Recipient="http://localhost:8081/identity" InResponseTo="id-1metyQVbc35RYztfJ"/>
+        </encas1:SubjectConfirmation>
+    </encas1:Subject>
+    
+    \end{lstlisting}
+\end{minipage}

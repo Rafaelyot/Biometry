@@ -1,0 +1,63 @@
+\section{Formato usado para os pedidos e respostas de atributos de entidade}
+
+\quad Sabendo que no primeiro projeto foi usado o padrão de troca de dados de autenticação e autorização entre entidades - \textbf{\textit{SAML}}, devido à natureza ativa do utilizador nos atributos de entidade e da flexibilidade na definição dos atributos de entidade a usar por parte do \textit{SP}, o padrão \textit{SAML} deixou de ser utilizável, uma vez que o \textit{SP} não consegue especificar os atributos de identidade (no pedido de autenticação)  que este necessita, pois isto é estabelecido pelo intercâmbio de meta-dados entre o \textit{SP} e o \textit{IDP} onde estes negoceiam a forma como vão interagir.\footnote{Apesar de não ser possível de utilizador o padrão SAML na totalidade, ainda é possível usar este padrão para o manuseamento de respostas de autenticação. Contudo, o padrão SAML foi completamente removido deste projeto, pois para possibilitar o uso deste padrão era necessário a \textit{helper application} interpretar pedidos usando o SAML (que não foi implementado no projeto 1)} Além disso, uma vez que as interações de \textit{SAML} eram apenas realizadas entre o \textit{IDP} e o \textit{SP}, os atributos de entidade usados poderiam nunca ser apresentados ao utilizador caso o \textit{IDP} não partilhasse essa informação.
+
+
+\quad Como é expectável foi criado um novo formato de pedido e resposta para partilha de atributos de entidade.
+
+\subsection{Formato do pedido de atributos de entidade}
+
+\begin{itemize}
+    \item \textbf{sp\_info}: Informação relativa ao \textit{SP}
+    \begin{itemize}
+        \item \textbf{id}: Valor que armazena o identificador do \textit{SP}
+        \item \textbf{location}: \textit{URL} do \textit{SP} para receber os atributos pedidos e a respetiva assinatura
+    \end{itemize}
+    \item \textbf{identity\_attributes}: Lista de atributos requisitados pelo \textit{SP}
+    \item \textbf{idp\_info}: Informação relativa ao \textit{IDP}
+    \begin{itemize}
+        \item \textbf{id}: Valor que armazena o identificador do \textit{IDP}
+        \item \textbf{location}: \textit{URL} do \textit{IDP} que permite a obtenção dos atributos recebidos
+    \end{itemize}
+\end{itemize}
+
+
+\begin{minipage}{\linewidth}
+    \begin{lstlisting}[language=C, caption={Exemplo de um pedido de atributos de entidade}, label={lst:atribute_request}, escapeinside={(*}{*)}]
+        {
+            "sp_info": {
+              "id": "http://localhost:8081",
+              "location": "http://localhost:8081/receive_identity_attributes"
+            },
+            "identity_attributes": [
+              "username",
+              "email"
+            ],
+            "idp_info": {
+              "id": "http://localhost:8082",
+              "location": "http://localhost:8082/handle_identity_request"
+            }
+          }
+    \end{lstlisting}
+\end{minipage}
+
+\subsection{Formato da resposta a um pedido de atributos de entidade}
+
+\begin{itemize}
+    \item \textbf{attributes}: Dicionário que armazena o mapeamento entre os atributos solicitados e o respetivo valor
+    \item \textbf{signature}: Atributo que armazena a assinatura (em base64) dos atributos de entidade. Esta assinatura é realizada pelo \textit{IDP} usando a sua chave privada.
+\end{itemize} 
+
+
+\begin{minipage}{\linewidth}
+    \begin{lstlisting}[language=C, caption={Exemplo da resposta ao pedido \ref{lst:atribute_request} de atributos de entidade}, label={lst:atribute_response}, escapeinside={(*}{*)}]
+        {
+            "attributes": {
+              "username": "rafael",
+              "email": "rafael@ua.pt"
+            },
+            "signature": "4UgFUEe+u3uauUnC2NzIbbzhe32p7rOdZCnTVaeynvvSIHEibasiozVv9nk0EsKo9Em4bqp0ms3WHrpC9C6gej
+            SYvATUAO0IhVgVKX1mQnN3vgzJ1bCULa7rr7uVXxGL0N1domUPDuUdhjN8c32TB1CGBtI11G8qUQGfrn8APDc="
+          }
+    \end{lstlisting}
+\end{minipage}

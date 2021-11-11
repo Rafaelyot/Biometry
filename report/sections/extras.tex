@@ -1,0 +1,10 @@
+\section{Extras}
+
+\quad Nesta secção será relatado alguns mecanismos implementados para melhorar este caso de uso.
+
+\subsection{Túnel seguro}
+
+\quad Para garantir a proteção no intercâmbio de mensagens foi usado a mesma estratégia de criação de um túnel seguro implementado no primeiro projeto. No primeiro projeto isto foi possível pois o \textit{IDP} na primeira interação com o \textit{helper application} enviava um segredo partilhado para que ambas as entidades conseguissem cifrar as mensagens enviadas usando algoritmos de criptografia simétrica, contudo, neste novo serviço isto já não é possível pois já não existe esta primeira interação do \textit{idp} para a \textit{helper application}, portanto, para que este segredo seja criado e partilhado é necessário a \textit{helper application} fazer um operação explicita de obtenção deste segredo do \textit{IDP}. Portanto, antes de iniciar qualquer comunicação de autenticação e/ou processo de identificação a \textit{helper application} faz um \textit{redirect} para um \textit{endpoint} do \textit{IDP} que por sua vez redireciona novamente para a \textit{helper application} com o segredo partilhado enviado por argumento. Uma vez que estas operações de redirecionamento são seguras (devido ao uso de \textit{https}) a partilha do segredo é segura.
+
+
+
