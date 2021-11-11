@@ -27,7 +27,7 @@ class Faces:
 		self.pre_defined_faces.append(new_face_features)
 
 	def verify_user(self, face_cmp: list[float]) -> bool:
-		return face_recognition.compare_faces(self.pre_defined_faces, face_cmp, tolerance=1)
+		return face_recognition.compare_faces(self.pre_defined_faces, face_cmp, tolerance=0.4)
 
 	def save_faces(self):
 		with open(f"{DIRECTORY_SAVE}/{self.username}", 'wb') as file:
